@@ -18,10 +18,6 @@ import java.util.Locale;
 
 public final class ChatColorTabCompleter implements TabCompleter {
 
-    private static final List<String> COLOUR_CODES = Arrays.asList(
-            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"
-    );
-
     private static final List<String> MODIFIER_CODES = Arrays.asList("k", "l", "m", "n", "o");
 
     private static final List<String> ADMIN_SUB_COMMANDS = Arrays.asList(
@@ -57,11 +53,7 @@ public final class ChatColorTabCompleter implements TabCompleter {
             return playerNames();
         }
 
-        if (args.length == 2) {
-            return allColourNames(null);
-        }
-
-        return allModifierNames(null);
+        return args.length == 2 ? Collections.emptyList() : allModifierNames(null);
     }
 
     private List<String> playerSuggestions(Player player, String[] args) {
@@ -69,10 +61,6 @@ public final class ChatColorTabCompleter implements TabCompleter {
 
         if (args.length == 1) {
             List<String> suggestions = new ArrayList<>(availableSubCommands(player));
-
-            if (hasPermission(player, "chatcolor.change.self")) {
-                suggestions.addAll(allColourNames(player));
-            }
 
             if (hasPermission(player, "chatcolor.change.others")) {
                 suggestions.addAll(playerNames());
@@ -96,7 +84,7 @@ public final class ChatColorTabCompleter implements TabCompleter {
                 return customSuggestions(player, args);
 
             default:
-                return colourAndModifierSuggestions(player, args);
+                return modifierSuggestions(player, args);
         }
     }
 
@@ -149,9 +137,6 @@ public final class ChatColorTabCompleter implements TabCompleter {
             case BOOLEAN:
                 return BOOLEANS;
 
-            case COLOUR_STRING:
-                return allColourNames(null);
-
             default:
                 return Collections.emptyList();
         }
@@ -172,10 +157,6 @@ public final class ChatColorTabCompleter implements TabCompleter {
             return new ArrayList<>(groupColoursManager.getOrderedGroupNames());
         }
 
-        if (args.length == 4 && action.equals("add")) {
-            return allColourNames(null);
-        }
-
         return Collections.emptyList();
     }
 
@@ -194,14 +175,10 @@ public final class ChatColorTabCompleter implements TabCompleter {
             return new ArrayList<>(customColoursManager.getCustomColours().keySet());
         }
 
-        if (args.length == 4 && action.equals("add")) {
-            return allColourNames(null);
-        }
-
         return Collections.emptyList();
     }
 
-    private List<String> colourAndModifierSuggestions(Player player, String[] args) {
+    private List<String> modifierSuggestions(Player player, String[] args) {
         boolean targetsAnotherPlayer = Bukkit.getPlayerExact(args[0]) != null;
 
         if (targetsAnotherPlayer) {
@@ -209,7 +186,7 @@ public final class ChatColorTabCompleter implements TabCompleter {
                 return Collections.emptyList();
             }
 
-            return args.length == 2 ? allColourNames(player) : allModifierNames(player);
+            return args.length == 2 ? Collections.emptyList() : allModifierNames(player);
         }
 
         if (!hasPermission(player, "chatcolor.change.self")) {
@@ -217,30 +194,6 @@ public final class ChatColorTabCompleter implements TabCompleter {
         }
 
         return allModifierNames(player);
-    }
-
-    private List<String> allColourNames(Player player) {
-        List<String> suggestions = new ArrayList<>();
-        suggestions.add("default");
-
-        for (String code : COLOUR_CODES) {
-            if (player != null && lacksColourPermission(player, code)) {
-                continue;
-            }
-
-            suggestions.add(code);
-            suggestions.add(StaticMaps.getColourName(code));
-        }
-
-        for (String customColour : customColoursManager.getCustomColours().keySet()) {
-            if (player != null && !hasPermission(player, "chatcolor.custom." + customColour.replace("%", ""))) {
-                continue;
-            }
-
-            suggestions.add(customColour);
-        }
-
-        return suggestions;
     }
 
     private List<String> allModifierNames(Player player) {
@@ -270,11 +223,6 @@ public final class ChatColorTabCompleter implements TabCompleter {
 
     private boolean hasPermission(Player player, String permission) {
         return player.isOp() || player.hasPermission(permission);
-    }
-
-    private boolean lacksColourPermission(Player player, String code) {
-        return !hasPermission(player, "chatcolor.color." + code)
-                && !player.hasPermission("chatcolor.color." + StaticMaps.getColourName(code));
     }
 
     private boolean lacksModifierPermission(Player player, String code) {
