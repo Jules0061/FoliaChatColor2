@@ -34,11 +34,11 @@ public enum Setting {
     }
 
     public String getName() {
-        return name().replaceAll("_", "-").toLowerCase();
+        return name().replace("_", "-").toLowerCase();
     }
 
     public static Setting getSetting(String name) {
-        name = name.replaceAll("-", "_").toUpperCase();
+        name = name.replace("-", "_").toUpperCase();
         return Setting.valueOf(name);
     }
 

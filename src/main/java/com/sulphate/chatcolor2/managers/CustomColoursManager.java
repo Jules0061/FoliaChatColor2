@@ -4,11 +4,11 @@ import com.sulphate.chatcolor2.utils.Config;
 import com.sulphate.chatcolor2.utils.Reloadable;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class CustomColoursManager implements Reloadable {
+public final class CustomColoursManager implements Reloadable {
 
     private final ConfigsManager configsManager;
 
@@ -17,7 +17,7 @@ public class CustomColoursManager implements Reloadable {
 
     public CustomColoursManager(ConfigsManager configsManager) {
         this.configsManager = configsManager;
-        customColoursMap = new HashMap<>();
+        customColoursMap = new ConcurrentHashMap<>();
 
         reload();
     }
@@ -29,11 +29,13 @@ public class CustomColoursManager implements Reloadable {
 
         for (String key : keys) {
             String colour = config.getString(key);
-            customColoursMap.put('%' + key, colour);
+
+            if (colour != null) {
+                customColoursMap.put('%' + key, colour);
+            }
         }
     }
 
-    // Returns the actual name (inclusive of %).
     public String addCustomColour(String name, String colour) {
         if (customColoursMap.containsKey(name)) {
             return null;
@@ -43,12 +45,11 @@ public class CustomColoursManager implements Reloadable {
         }
 
         customColoursMap.put(name, colour);
-        config.set(name.substring(1), colour); // Substring call to remove the %
+        config.set(name.substring(1), colour);
         configsManager.saveConfig(Config.CUSTOM_COLOURS);
         return name;
     }
 
-    // Returns the removed colour.
     public String removeCustomColour(String name) {
         if (!customColoursMap.containsKey(name)) {
             return null;

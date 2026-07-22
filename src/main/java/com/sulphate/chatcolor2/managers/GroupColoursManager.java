@@ -5,21 +5,21 @@ import com.sulphate.chatcolor2.utils.Reloadable;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class GroupColoursManager implements Reloadable {
+public final class GroupColoursManager implements Reloadable {
 
     private final ConfigsManager configsManager;
 
     private final Map<String, String> groupColours;
-    private Set<String> orderedGroupNames;
+    private volatile Set<String> orderedGroupNames;
     private YamlConfiguration config;
 
     public GroupColoursManager(ConfigsManager configsManager) {
         this.configsManager = configsManager;
-        groupColours = new HashMap<>();
+        groupColours = new ConcurrentHashMap<>();
 
         reload();
     }
@@ -31,7 +31,10 @@ public class GroupColoursManager implements Reloadable {
 
         for (String groupName : orderedGroupNames) {
             String colour = config.getString(groupName);
-            groupColours.put(groupName, colour);
+
+            if (colour != null) {
+                groupColours.put(groupName, colour);
+            }
         }
     }
 
@@ -45,7 +48,7 @@ public class GroupColoursManager implements Reloadable {
         }
 
         groupColours.put(name, colour);
-        config.set(name, colour); // Substring call to remove the %
+        config.set(name, colour);
         configsManager.saveConfig(Config.GROUPS);
     }
 
@@ -61,10 +64,6 @@ public class GroupColoursManager implements Reloadable {
 
     public Set<String> getOrderedGroupNames() {
         return orderedGroupNames;
-    }
-
-    public String getGroupColour(String name) {
-        return groupColours.get(name);
     }
 
     public String getGroupColourForPlayer(Player player, boolean returnName) {

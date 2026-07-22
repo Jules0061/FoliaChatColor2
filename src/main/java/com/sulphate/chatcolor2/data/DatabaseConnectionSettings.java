@@ -2,13 +2,9 @@ package com.sulphate.chatcolor2.data;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
-import org.mariadb.jdbc.Driver;
-import org.mariadb.jdbc.plugin.AuthenticationPlugin;
 
 import java.util.Properties;
-import java.util.ServiceLoader;
 
 import javax.sql.DataSource;
 

@@ -1,10 +1,8 @@
 package com.sulphate.chatcolor2.data;
 
-import com.sulphate.chatcolor2.commands.Setting;
 import com.sulphate.chatcolor2.main.ChatColor;
 import com.sulphate.chatcolor2.managers.ConfigsManager;
 import com.sulphate.chatcolor2.schedulers.AutoSaveScheduler;
-import com.sulphate.chatcolor2.utils.Config;
 import com.sulphate.chatcolor2.utils.GeneralUtils;
 import com.sulphate.chatcolor2.utils.Messages;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -54,7 +52,6 @@ public class YamlStorageImpl extends PlayerDataStore {
             callback.callback(true);
             return;
         }
-        // New player joined! Values will be updated on chat, if applicable.
         else if (!config.contains("color")) {
             config.set("color", "");
             config.set("default-code", -1);
@@ -73,7 +70,6 @@ public class YamlStorageImpl extends PlayerDataStore {
     public void savePlayerData(UUID uuid) {
         PlayerData data = dataMap.get(uuid);
 
-        // Don't try to save temporary data.
         if (data.isTemporary() || !data.isDirty()) {
             return;
         }

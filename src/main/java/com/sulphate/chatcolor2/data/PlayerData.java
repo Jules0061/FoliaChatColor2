@@ -1,26 +1,27 @@
 package com.sulphate.chatcolor2.data;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class PlayerData {
 
     private final UUID uuid;
-    private String colour;
-    private Set<Character> modifiers;
-    private long defaultCode;
-    private boolean isTemporary;
-    private boolean dirty;
+
+    private volatile String colour;
+    private volatile Set<Character> modifiers;
+    private volatile long defaultCode;
+    private volatile boolean isTemporary;
+    private volatile boolean dirty;
 
     public PlayerData(UUID uuid, String colour, long defaultCode) {
         this.uuid = uuid;
         this.defaultCode = defaultCode;
 
         this.colour = colour == null ? "" : getColourName(colour);
-        modifiers = colour == null ? new HashSet<>() : getModifiers(colour);
+        modifiers = getModifiers(colour);
     }
 
-    // The null colour and negative default code cause the default to be set.
     public static PlayerData createTemporaryData(UUID uuid) {
         PlayerData data = new PlayerData(uuid, null, -1);
         data.setTemporary();
@@ -29,23 +30,25 @@ public class PlayerData {
     }
 
     private static Set<Character> getModifiers(String colour) {
+        Set<Character> result = ConcurrentHashMap.newKeySet();
+
         if (colour == null || colour.isEmpty()) {
-            return new HashSet<>();
+            return result;
         }
 
         int secondIndex = colour.substring(1).indexOf('&');
 
         if (secondIndex == -1) {
-            return new HashSet<>();
+            return result;
         }
-        else {
-            return Arrays.stream(colour
-                            .substring(secondIndex + 1)
-                            .replace("&", "")
-                            .split(""))
-                    .map(s -> s.charAt(0))
-                    .collect(Collectors.toSet());
+
+        String modifierChars = colour.substring(secondIndex + 1).replace("&", "");
+
+        for (int i = 0; i < modifierChars.length(); i++) {
+            result.add(modifierChars.charAt(i));
         }
+
+        return result;
     }
 
     private static String getColourName(String colour) {

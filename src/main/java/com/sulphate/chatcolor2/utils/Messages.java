@@ -7,11 +7,11 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.util.List;
 
-public class Messages implements Reloadable {
+public final class Messages implements Reloadable {
 
     private final ConfigsManager configsManager;
     private YamlConfiguration config;
-    
+
     public Messages(ConfigsManager configsManager) {
         this.configsManager = configsManager;
         reload();
@@ -21,7 +21,6 @@ public class Messages implements Reloadable {
         reloadMessages();
     }
 
-    // Startup and Shutdown Messages
     public List<String> STARTUP_MESSAGES;
     public String METRICS_ENABLED;
     public String METRICS_DISABLED;
@@ -30,14 +29,12 @@ public class Messages implements Reloadable {
     public String SHUTDOWN;
     public String LEGACY_DETECTED;
 
-    // General Messages and Strings
     public String PREFIX;
-    public String PLUGIN_NOTIFICATION = GeneralUtils.colourise("Server is running ChatColor 2 version &c" + ChatColor.getPlugin().getDescription().getVersion());
+    public String PLUGIN_NOTIFICATION = GeneralUtils.colourise("Server is running ChatColor 2 version &c" + ChatColor.getPlugin().getVersionString());
     public String COMMAND_EXISTS;
     public String COLORS;
     public String MODIFIERS;
 
-    // Command-Related Messages
     public String NOT_ENOUGH_ARGS;
     public String TOO_MANY_ARGS;
     public String PLAYER_NOT_JOINED;
@@ -77,7 +74,6 @@ public class Messages implements Reloadable {
     public String PLAYER_PAUSED;
     public String PLAYER_UNPAUSED;
 
-    // Group-Colour Messages
     public String GROUP_COLOR_EXISTS;
     public String GROUP_COLOR_NOT_EXISTS;
     public String USING_GROUP_COLOR;
@@ -86,7 +82,6 @@ public class Messages implements Reloadable {
     public String GROUP_COLOR_LIST;
     public String GROUP_COLOR_FORMAT;
 
-    // Confirmation and Settings Messages
     public String CONFIRM_ARE_YOU_SURE;
     public String CONFIRM_FINALISE;
     public String DID_NOT_CONFIRM;
@@ -98,14 +93,12 @@ public class Messages implements Reloadable {
     public String CHANGE_SUCCESS;
     public String CONFIGS_RESET;
 
-    // GUI-Related Messages and Strings
     public String INVALID_GUI;
     public String GUI_ERROR;
     public String GUI_UNAVAILABLE;
     public String GUI_AVAILABLE;
     public String CLICK_TO_RUN;
 
-    // Colour Strings
     public String BLACK;
     public String DARK_BLUE;
     public String DARK_GREEN;
@@ -124,14 +117,12 @@ public class Messages implements Reloadable {
     public String WHITE;
     public String DEFAULT;
 
-    // Modifier Strings
     public String OBFUSCATED;
     public String BOLD;
     public String STRIKETHROUGH;
     public String UNDERLINED;
     public String ITALIC;
 
-    // Database Messages
     public String FAILED_TO_INITIALISE_DB;
     public String FAILED_TO_CONNECT_TO_DB;
     public String FAILED_TO_CREATE_DB;
@@ -145,7 +136,6 @@ public class Messages implements Reloadable {
     public String DB_STILL_CONNECTING;
     public String FAILED_TO_LOAD_PLAYER_FILE;
 
-    // Static plugin-side messages.
     public static final String INVALID_GUI_ERROR = "Invalid GUI %s.";
     public static final String MISSING_REQUIRED_KEY = "Missing required key %s in GUI %s.";
     public static final String INVALID_ITEM_KEY = "Invalid item key %s in GUI %s: %s.";
@@ -167,7 +157,6 @@ public class Messages implements Reloadable {
     public void reloadMessages() {
         config = configsManager.getConfig(Config.MESSAGES);
 
-        // Startup Messages
         STARTUP_MESSAGES = config.getStringList("startup");
         METRICS_ENABLED = getAndColourise("metrics-enabled");
         METRICS_DISABLED = getAndColourise("metrics-disabled");
@@ -176,13 +165,11 @@ public class Messages implements Reloadable {
         SHUTDOWN = getAndColourise("shutdown");
         LEGACY_DETECTED = getAndColourise("legacy-detected");
 
-        // General Messages and Strings
         PREFIX = getAndColourise("prefix");
         COMMAND_EXISTS = getAndColourise("command-exists");
         COLORS = getAndColourise("colors");
         MODIFIERS = getAndColourise("modifiers");
 
-        // Command-Related Messages
         NOT_ENOUGH_ARGS = getAndColourise("not-enough-args");
         TOO_MANY_ARGS = getAndColourise("too-many-args");
         PLAYER_NOT_JOINED = getAndColourise("player-not-joined");
@@ -222,7 +209,6 @@ public class Messages implements Reloadable {
         PLAYER_PAUSED = getAndColourise("player-paused");
         PLAYER_UNPAUSED = getAndColourise("player-unpaused");
 
-        // Group-Color Messages
         GROUP_COLOR_EXISTS = getAndColourise("group-color-exists");
         GROUP_COLOR_NOT_EXISTS = getAndColourise("group-color-not-exists");
         USING_GROUP_COLOR = getAndColourise("using-group-color");
@@ -231,7 +217,6 @@ public class Messages implements Reloadable {
         GROUP_COLOR_LIST = getAndColourise("group-color-list");
         GROUP_COLOR_FORMAT = getAndColourise("group-color-format");
 
-        // Confirmation and Settings Messages
         CONFIRM_ARE_YOU_SURE = getAndColourise("confirm-are-you-sure");
         CONFIRM_FINALISE = getAndColourise("confirm-finalise");
         DID_NOT_CONFIRM = getAndColourise("did-not-confirm");
@@ -243,14 +228,12 @@ public class Messages implements Reloadable {
         CHANGE_SUCCESS = getAndColourise("change-success");
         CONFIGS_RESET = getAndColourise("configs-reset");
 
-        // GUI-Related Messages and Strings
         INVALID_GUI = getAndColourise("invalid-gui");
         GUI_ERROR = getAndColourise("gui-error");
         GUI_UNAVAILABLE = getAndColourise("gui-unavailable");
         GUI_AVAILABLE = getAndColourise("gui-available");
         CLICK_TO_RUN = getAndColourise("click-to-run");
 
-        // Colour Strings
         BLACK = getAndColourise("black");
         DARK_BLUE = getAndColourise("dark-blue");
         DARK_GREEN = getAndColourise("dark-green");
@@ -269,7 +252,6 @@ public class Messages implements Reloadable {
         WHITE = getAndColourise("white");
         DEFAULT = getAndColourise("default");
 
-        // Modifier Strings
         OBFUSCATED = getAndColourise("obfuscated");
         BOLD = getAndColourise("bold");
         STRIKETHROUGH = getAndColourise("strikethrough");
@@ -290,8 +272,6 @@ public class Messages implements Reloadable {
         FAILED_TO_LOAD_PLAYER_FILE = getAndColourise("failed-to-load-player-file");
     }
 
-    // Gets and colourises a message from config.
-    // Also catches missing messages (mainly for dev purposes).
     private String getAndColourise(String key) {
         String message = config.getString(key);
 

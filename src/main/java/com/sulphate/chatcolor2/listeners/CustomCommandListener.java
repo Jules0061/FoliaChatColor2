@@ -9,7 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
-public class CustomCommandListener implements Listener, Reloadable {
+public final class CustomCommandListener implements Listener, Reloadable {
 
     private final ConfigsManager configsManager;
 
@@ -29,7 +29,6 @@ public class CustomCommandListener implements Listener, Reloadable {
         String command = e.getMessage();
         String customCommand = mainConfig.getString(Setting.COMMAND_NAME.getConfigPath());
 
-        // If the custom command is at the start, replace it with the actual command.
         if (command.toLowerCase().startsWith("/" + customCommand)) {
             e.setMessage(command.replace("/" + customCommand, "/chatcolor"));
         }

@@ -15,12 +15,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
-import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
-public class ChatListener implements Listener, Reloadable {
+@SuppressWarnings("deprecation")
+public final class ChatListener implements Listener, Reloadable {
 
     private static final Pattern SYMBOLS_REGEX = Pattern.compile("^[!^\"£$%*()\\[\\]{}'#@~;:,./<>?\\\\|\\-_=+]+[^!^\"£$%&*()\\[\\]{}'#@~;:,./<>?\\\\|\\-_=+]+");
 
@@ -38,7 +39,7 @@ public class ChatListener implements Listener, Reloadable {
         this.groupColoursManager = groupColoursManager;
         this.dataStore = dataStore;
 
-        pausedPlayers = new HashSet<>();
+        pausedPlayers = ConcurrentHashMap.newKeySet();
 
         reload();
     }
@@ -69,8 +70,6 @@ public class ChatListener implements Listener, Reloadable {
 
         boolean defaultColourEnabled = mainConfig.getBoolean(Setting.DEFAULT_COLOR_ENABLED.getConfigPath());
 
-        // If they chat before the data store has had a chance to load/fail their data, use the default colour, or if
-        // not enabled, do nothing at all.
         if (dataStore.getColour(uuid) == null) {
             if (defaultColourEnabled) {
                 String defaultColor = mainConfig.getString("default.color");
@@ -80,12 +79,10 @@ public class ChatListener implements Listener, Reloadable {
             return;
         }
 
-        // Check default colour.
         if (defaultColourEnabled) {
             generalUtils.checkDefault(uuid);
         }
 
-        // Check if the player should have their colour reset.
         if (mainConfig.getBoolean(Setting.REMOVE_INACCESSIBLE_COLORS.getConfigPath())) {
             String colour = dataStore.getColour(uuid);
             String colourName = dataStore.getPlayerData(uuid).getColourName();
@@ -97,12 +94,11 @@ public class ChatListener implements Listener, Reloadable {
 
         message = checkColourCodes(message, player);
 
-        // Check if they have a group colour, and if it should be enforced.
         String groupColour = groupColoursManager.getGroupColourForPlayer(player);
         String colour = dataStore.getColour(uuid);
 
         if (groupColour != null) {
-            // If it should be forced, set it so.
+
             if (mainConfig.getBoolean(Setting.FORCE_GROUP_COLORS.getConfigPath())) {
                 colour = groupColour;
             }
@@ -112,14 +108,8 @@ public class ChatListener implements Listener, Reloadable {
     }
 
     private boolean checkHasSymbolPrefix(String message) {
-        boolean checkSymbols = mainConfig.getBoolean(Setting.IGNORE_SYMBOL_PREFIXES.getConfigPath());
-
-        if (checkSymbols) {
-            return SYMBOLS_REGEX.matcher(message).matches();
-        }
-        else {
-            return false;
-        }
+        return mainConfig.getBoolean(Setting.IGNORE_SYMBOL_PREFIXES.getConfigPath())
+                && SYMBOLS_REGEX.matcher(message).matches();
     }
 
     private void colourAndModify(Player player, String message, String colour, AsyncPlayerChatEvent event) {
@@ -128,7 +118,7 @@ public class ChatListener implements Listener, Reloadable {
 
             if (override) {
                 while (GeneralUtils.isDifferentWhenColourised(message)) {
-                    // Strip the colour from the message.
+
                     message = org.bukkit.ChatColor.stripColor(GeneralUtils.colourise(message));
                 }
 
@@ -155,11 +145,11 @@ public class ChatListener implements Listener, Reloadable {
     }
 
     private String checkColourCodes(String message, Player player) {
-        // If their message contains &, check they have permissions for it, or strip the colour.
+
         if (!player.hasPermission("chatcolor.use-color-codes")) {
-            // A player reported using '&&a' for example, would bypass this. So, loop until it's not different.
+
             while (GeneralUtils.isDifferentWhenColourised(message)) {
-                // Strip the colour from the message.
+
                 message = org.bukkit.ChatColor.stripColor(GeneralUtils.colourise(message));
             }
         }
@@ -174,7 +164,7 @@ public class ChatListener implements Listener, Reloadable {
     }
 
     private boolean hasDefaultOrGroupColour(Player player, String colour) {
-        // Check if they are using the default colour (no permission needed).
+
         if (mainConfig.getBoolean(Setting.DEFAULT_COLOR_ENABLED.getConfigPath())) {
             String defaultColour = mainConfig.getString("default.color");
 
@@ -183,13 +173,10 @@ public class ChatListener implements Listener, Reloadable {
             }
         }
 
-        // Check if they are using a group colour (no permission needed).
         String groupColour = groupColoursManager.getGroupColourForPlayer(player);
 
         if (groupColour != null) {
-            if (colour.equals(groupColour)) {
-                return true;
-            }
+            return colour.equals(groupColour);
         }
 
         return false;

@@ -2,19 +2,20 @@ package com.sulphate.chatcolor2.schedulers;
 
 import com.sulphate.chatcolor2.main.ChatColor;
 import com.sulphate.chatcolor2.utils.GeneralUtils;
-import org.bukkit.Bukkit;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class AutoSaveScheduler {
 
     private final ChatColor plugin;
 
-    private BukkitTask task;
+    private ScheduledTask task;
     private final ConcurrentHashMap<String, YamlConfiguration> configsToSave;
     private int saveInterval;
 
@@ -27,7 +28,8 @@ public class AutoSaveScheduler {
     }
 
     private void run() {
-        task = Bukkit.getScheduler().runTaskTimer(plugin, this::saveAllConfigs, (long) saveInterval * 20 * 60, (long) saveInterval * 20 * 60);
+        long ticks = (long) saveInterval * 20 * 60;
+        task = Schedulers.globalRepeating(plugin, ignored -> saveAllConfigs(), ticks, ticks);
     }
 
     public void setSaveInterval(int saveInterval) {
@@ -36,34 +38,40 @@ public class AutoSaveScheduler {
     }
 
     private void restart() {
-        task.cancel();
+        cancelTask();
         run();
     }
 
     public void stop() {
-        task.cancel();
+        cancelTask();
         saveAllConfigs();
     }
 
-    // Adds a config to the HashMap to be saved.
+    private void cancelTask() {
+        if (task != null) {
+            task.cancel();
+            task = null;
+        }
+    }
+
     public void saveConfigWithDelay(String configName, YamlConfiguration config) {
         configsToSave.put(configName, config);
     }
 
-    // Saves all pending configs to files.
     private void saveAllConfigs() {
-        for (String configName : configsToSave.keySet()) {
-            YamlConfiguration config = configsToSave.get(configName);
-            File file = new File(plugin.getDataFolder(), configName);
+        File dataFolder = plugin.getDataFolder();
+
+        for (Iterator<Map.Entry<String, YamlConfiguration>> it = configsToSave.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<String, YamlConfiguration> entry = it.next();
 
             try {
-                config.save(file);
+                entry.getValue().save(new File(dataFolder, entry.getKey()));
             }
             catch (IOException ex) {
-                Bukkit.getConsoleSender().sendMessage(GeneralUtils.colourise("&cError: Failed to save a config (" + configName + ")!"));
+                GeneralUtils.sendConsoleMessage("&cError: Failed to save a config (" + entry.getKey() + ")!");
             }
 
-            configsToSave.remove(configName);
+            it.remove();
         }
     }
 

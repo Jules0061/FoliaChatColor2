@@ -5,7 +5,9 @@ import com.sulphate.chatcolor2.exception.InvalidGuiException;
 import com.sulphate.chatcolor2.exception.InvalidItemTemplateException;
 import com.sulphate.chatcolor2.exception.InvalidMaterialException;
 import com.sulphate.chatcolor2.gui.item.impl.CommandItem;
+import com.sulphate.chatcolor2.main.ChatColor;
 import com.sulphate.chatcolor2.managers.ConfigsManager;
+import com.sulphate.chatcolor2.schedulers.Schedulers;
 import com.sulphate.chatcolor2.managers.CustomColoursManager;
 import com.sulphate.chatcolor2.gui.item.ItemStackTemplate;
 import com.sulphate.chatcolor2.gui.item.impl.ColourItem;
@@ -15,6 +17,8 @@ import com.sulphate.chatcolor2.utils.GeneralUtils;
 import com.sulphate.chatcolor2.utils.Messages;
 import com.sulphate.chatcolor2.utils.Reloadable;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -24,16 +28,17 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class GuiManager implements Reloadable, Listener {
+public final class GuiManager implements Reloadable, Listener {
 
     private static final String GUI_CONFIG_KEY = "config";
 
     private static boolean shouldCopyNoPermissionItemMaterial;
+    private static Map<String, Sound> soundsByName;
 
     private final ConfigsManager configsManager;
     private final PlayerDataStore dataStore;
@@ -42,8 +47,9 @@ public class GuiManager implements Reloadable, Listener {
     private final Messages M;
 
     private final Map<String, ConfigurationSection> guiConfigs;
+
     private final Map<Player, Gui> openGuis;
-    private final List<Player> transitioningPlayers;
+    private final Set<Player> transitioningPlayers;
 
     private String mainConfigName = "main";
 
@@ -55,8 +61,8 @@ public class GuiManager implements Reloadable, Listener {
         this.M = M;
 
         guiConfigs = new HashMap<>();
-        openGuis = new HashMap<>();
-        transitioningPlayers = new ArrayList<>();
+        openGuis = new ConcurrentHashMap<>();
+        transitioningPlayers = ConcurrentHashMap.newKeySet();
         shouldCopyNoPermissionItemMaterial = false;
 
         reload();
@@ -67,8 +73,13 @@ public class GuiManager implements Reloadable, Listener {
     }
 
     public void closeOpenGuis() {
+        ChatColor plugin = ChatColor.getPlugin();
+
         for (Player player : openGuis.keySet()) {
-            player.closeInventory();
+            try {
+                Schedulers.entity(plugin, player, player::closeInventory);
+            }
+            catch (IllegalStateException ignored) { }
         }
     }
 
@@ -83,9 +94,9 @@ public class GuiManager implements Reloadable, Listener {
         YamlConfiguration config = configsManager.getConfig(Config.GUI);
         Set<String> keys = config.getKeys(false);
 
-        if (keys.contains(GUI_CONFIG_KEY)) {
-            ConfigurationSection configSection = config.getConfigurationSection(GUI_CONFIG_KEY);
+        ConfigurationSection configSection = config.getConfigurationSection(GUI_CONFIG_KEY);
 
+        if (configSection != null) {
             CommandItem.clickToRunMessage = M.CLICK_TO_RUN;
 
             if (configSection.contains("main-inventory")) {
@@ -114,16 +125,14 @@ public class GuiManager implements Reloadable, Listener {
 
                 if (material != null && material.equals("COPY")) {
                     shouldCopyNoPermissionItemMaterial = true;
-                    // Setting the default material so that it has something to work with.
+
                     noPermissionSection.set("material", Material.BARRIER);
                 }
 
                 try {
                     Gui.setNoPermissionItemTemplate(ItemStackTemplate.fromConfigSection(noPermissionSection));
                 }
-                catch (InvalidItemTemplateException | InvalidMaterialException ex) {
-                    // Do nothing, a null no-permissions item is fine!
-                }
+                catch (InvalidItemTemplateException | InvalidMaterialException ignored) { }
             }
 
             Gui.setSelectSound(tryGetSound(configSection, "select-sound"));
@@ -177,18 +186,43 @@ public class GuiManager implements Reloadable, Listener {
     }
 
     private Sound tryGetSound(ConfigurationSection section, String key) {
-        if (section.contains(key)) {
-            String soundName = section.getString(key);
+        String soundName = section.getString(key);
 
-            try {
-                return Sound.valueOf(soundName);
-            }
-            catch (IllegalArgumentException ex) {
-                GeneralUtils.sendConsoleMessage(M.PREFIX + String.format(Messages.INVALID_SOUND_NAME, soundName));
-            }
+        if (soundName == null) {
+            return null;
         }
 
-        return null;
+        Sound sound = soundsByName().get(soundName.toUpperCase(Locale.ENGLISH));
+
+        if (sound == null) {
+            GeneralUtils.sendConsoleMessage(M.PREFIX + String.format(Messages.INVALID_SOUND_NAME, soundName));
+        }
+
+        return sound;
+    }
+
+    private static Map<String, Sound> soundsByName() {
+        if (soundsByName == null) {
+            Map<String, Sound> sounds = new HashMap<>();
+
+            for (Sound sound : Registry.SOUNDS) {
+                NamespacedKey soundKey = Registry.SOUNDS.getKey(sound);
+
+                if (soundKey == null) {
+                    continue;
+                }
+
+                String value = soundKey.getKey().toUpperCase(Locale.ENGLISH);
+
+                sounds.put(value.replace('.', '_'), sound);
+                sounds.put(value, sound);
+                sounds.put(soundKey.toString().toUpperCase(Locale.ENGLISH), sound);
+            }
+
+            soundsByName = sounds;
+        }
+
+        return soundsByName;
     }
 
     public void openMainGui(Player player) {
@@ -236,18 +270,21 @@ public class GuiManager implements Reloadable, Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        Player player = (Player) event.getWhoClicked();
-        Inventory inventory = event.getView().getTopInventory();
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
 
-        if (openGuis.containsKey(player)) {
+        Gui gui = openGuis.get(player);
+
+        if (gui != null) {
             event.setCancelled(true);
 
             InventoryAction action = event.getAction();
             ItemStack clicked = event.getCurrentItem();
 
             if (action.equals(InventoryAction.PICKUP_ALL) && clicked != null && !clicked.getType().equals(Material.AIR)) {
-                // Perform the interaction, persist any changes to their colour.
-                openGuis.get(player).onInteract(event.getRawSlot(), inventory);
+
+                gui.onInteract(event.getRawSlot(), event.getView().getTopInventory());
                 dataStore.savePlayerData(player.getUniqueId());
             }
         }
@@ -255,7 +292,9 @@ public class GuiManager implements Reloadable, Listener {
 
     @EventHandler
     public void onInventoryClose(InventoryCloseEvent event) {
-        Player player = (Player) event.getPlayer();
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
 
         if (!transitioningPlayers.contains(player)) {
             openGuis.remove(player);

@@ -1,22 +1,24 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>me.sulphate</groupId>
-  <artifactId>ChatColor2</artifactId>
+  <artifactId>FoliaChatColor2</artifactId>
   <version>1.16.1</version>
-  <name>ChatColor2</name>
+  <name>FoliaChatColor2</name>
 
   <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <java.version>21</java.version>
+    <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Bump this to track newer 1.21.x builds; api-version in plugin.yml keeps forward compatibility. -->
+    <paper.api.version>1.21.11-R0.1-SNAPSHOT</paper.api.version>
   </properties>
 
   <repositories>
     <repository>
-      <id>spigot-repo</id>
-      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+      <id>papermc-repo</id>
+      <url>https://repo.papermc.io/repository/maven-public/</url>
     </repository>
 
     <repository>
@@ -28,20 +30,30 @@
       <id>placeholderapi</id>
       <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
     </repository>
-
-    <repository>
-      <id>minecraft-repo</id>
-      <url>https://libraries.minecraft.net/</url>
-    </repository>
   </repositories>
 
   <dependencies>
-    <!-- Spigot API -->
+    <!-- Paper API - bundles the Folia region schedulers (io.papermc.paper.threadedregions.scheduler). -->
     <dependency>
-      <groupId>org.spigotmc</groupId>
-      <artifactId>spigot-api</artifactId>
-      <version>1.20.3-R0.1-SNAPSHOT</version>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+      <version>${paper.api.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <!-- Leak in as compile scope but are supplied by the server; shading them would only cause conflicts. -->
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.errorprone</groupId>
+          <artifactId>error_prone_annotations</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.checkerframework</groupId>
+          <artifactId>checker-qual</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!-- bStats -->
@@ -66,27 +78,29 @@
       <artifactId>mariadb-java-client</artifactId>
       <version>3.3.2</version>
       <scope>compile</scope>
+      <exclusions>
+        <!-- Windows integrated authentication, which this plugin never uses. Its classes were already stripped from
+             the shaded jar by the filters below, so excluding it outright just drops the dead JNA/Caffeine weight. -->
+        <exclusion>
+          <groupId>com.github.waffle</groupId>
+          <artifactId>waffle-jna</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!-- HikariDB (JDBC Connection Pool Manager) -->
     <dependency>
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP</artifactId>
-      <version>4.0.3</version>
+      <version>5.1.0</version>
       <scope>compile</scope>
-    </dependency>
-
-    <!-- Mojang Authlib (required for skulls) -->
-    <dependency>
-      <groupId>com.mojang</groupId>
-      <artifactId>authlib</artifactId>
-      <version>1.5.21</version>
-      <scope>provided</scope>
     </dependency>
 
   </dependencies>
 
   <build>
+    <finalName>${project.name}-${project.version}</finalName>
+
     <resources>
       <resource>
         <filtering>true</filtering>
@@ -97,9 +111,19 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${maven.compiler.release}</release>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>3.6.0</version>
         <configuration>
+          <createDependencyReducedPom>false</createDependencyReducedPom>
 
           <relocations>
             <relocation>
@@ -122,6 +146,11 @@
             <filter>
               <artifact>*:*</artifact>
               <excludes>
+                <exclude>META-INF/MANIFEST.MF</exclude>
+                <exclude>META-INF/*.SF</exclude>
+                <exclude>META-INF/*.DSA</exclude>
+                <exclude>META-INF/*.RSA</exclude>
+                <exclude>module-info.class</exclude>
                 <exclude>org/slf4j/**</exclude>
                 <exclude>org/apache/**</exclude>
                 <exclude>org/checkerframework/**</exclude>
@@ -132,6 +161,14 @@
               </excludes>
             </filter>
           </filters>
+
+          <transformers>
+            <!-- Rewrites META-INF/services entries to match the relocated package names, so the MariaDB driver can
+                 still find its codecs, TLS and credential plugins inside the shaded jar. -->
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+            <!-- Merges the LICENSE files of the shaded dependencies instead of letting them overwrite each other. -->
+            <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer" />
+          </transformers>
 
         </configuration>
 

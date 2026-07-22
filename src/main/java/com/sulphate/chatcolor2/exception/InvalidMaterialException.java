@@ -1,15 +1,14 @@
 package com.sulphate.chatcolor2.exception;
 
+import java.io.Serial;
+
 public class InvalidMaterialException extends RuntimeException {
 
-    private final String invalidName;
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     public InvalidMaterialException(String invalidName) {
-        this.invalidName = invalidName;
-    }
-
-    public String getInvalidName() {
-        return invalidName;
+        super("Invalid material: " + invalidName);
     }
 
 }

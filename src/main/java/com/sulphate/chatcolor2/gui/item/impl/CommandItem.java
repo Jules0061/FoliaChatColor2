@@ -3,6 +3,8 @@ package com.sulphate.chatcolor2.gui.item.impl;
 import com.sulphate.chatcolor2.gui.item.ClickableItem;
 import com.sulphate.chatcolor2.gui.item.ComplexGuiItem;
 import com.sulphate.chatcolor2.gui.item.ItemStackTemplate;
+import com.sulphate.chatcolor2.main.ChatColor;
+import com.sulphate.chatcolor2.schedulers.Schedulers;
 import com.sulphate.chatcolor2.utils.InventoryUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.ConsoleCommandSender;
@@ -22,7 +24,6 @@ public class CommandItem extends ComplexGuiItem implements ClickableItem {
     public ItemStack buildItem() {
         ItemStack item = itemTemplate.build(1);
 
-        // Allow people to remove it if they want to - this is a simple way to do so.
         if (!clickToRunMessage.isEmpty()) {
             List<String> lore = InventoryUtils.getLore(item);
 
@@ -37,8 +38,11 @@ public class CommandItem extends ComplexGuiItem implements ClickableItem {
 
     @Override
     public void click() {
-        ConsoleCommandSender console = Bukkit.getConsoleSender();
-        Bukkit.dispatchCommand(console, data);
+
+        Schedulers.global(ChatColor.getPlugin(), () -> {
+            ConsoleCommandSender console = Bukkit.getConsoleSender();
+            Bukkit.dispatchCommand(console, data);
+        });
     }
 
 }

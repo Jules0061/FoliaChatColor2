@@ -29,8 +29,7 @@ public class ModifierItem extends ComplexGuiItem implements PermissibleItem, Sel
     private boolean selected;
 
     public ModifierItem(String modifier, String name, PlayerData playerData, List<String> noPermissionLore) {
-        // Modifiers have two underlying items - selected and unselected. This doesn't really conform to the
-        // design pattern I've gone for, so I may rework this in the future. The template passed in here
+
         super(modifier, new ItemStackTemplate(selectedMaterial, name, null, null));
 
         permission = "chatcolor.modifier." + modifier;

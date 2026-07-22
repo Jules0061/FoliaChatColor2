@@ -10,7 +10,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class PlaceholderAPIHook extends PlaceholderExpansion {
 
@@ -44,23 +43,23 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
     }
 
     @Override
-    public String getAuthor() {
-        return plugin.getDescription().getAuthors().toString();
+    public @NotNull String getAuthor() {
+        return plugin.getAuthorList().toString();
     }
 
     @Override
-    public String getIdentifier() {
+    public @NotNull String getIdentifier() {
         return "cc";
     }
 
     @Override
-    public String getVersion() {
-        return plugin.getDescription().getVersion();
+    public @NotNull String getVersion() {
+        return plugin.getVersionString();
     }
 
     @Override
     public String onPlaceholderRequest(Player player, @NotNull String identifier) {
-        // Ignore if player is null.
+
         if (player == null) {
             return "";
         }
@@ -71,7 +70,7 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
 
         switch (identifier.toLowerCase()) {
             case "full_color": {
-                // Return the player's full colour, including modifiers. Does not work for rainbow/gradient colours!
+
                 if (isCustomColour) {
                     colour = customColoursManager.getCustomColour(colour);
                 }
@@ -95,7 +94,6 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                     colour = customColoursManager.getCustomColour(colour);
                 }
 
-                // Remove any modifiers (start index = second & symbol).
                 int modifiersStartIndex = (colour.substring(1).indexOf("&"));
 
                 if (modifiersStartIndex != -1) {
@@ -142,7 +140,6 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                     colour = customColoursManager.getCustomColour(colour);
                 }
 
-                // e.g., 'k' -> "&f&kk" -> renders as an obfuscated white 'k'.
                 return GeneralUtils.colourise(generalUtils.getModifierNames(colour, false).map(m -> "&f&" + m + m).collect(Collectors.joining()));
             }
 
@@ -159,14 +156,20 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                     colour = customColoursManager.getCustomColour(colour);
                 }
 
-                List<String> modifierChars = generalUtils.getModifierNames(colour, false).collect(Collectors.toList());
-                List<String> modifierNames = generalUtils.getModifierNames(colour, true).collect(Collectors.toList());
+                List<String> modifierChars = generalUtils.getModifierNames(colour, false).toList();
+                List<String> modifierNames = generalUtils.getModifierNames(colour, true).toList();
+
+                StringBuilder builder = new StringBuilder();
 
                 for (int i = 0; i < modifierNames.size(); i++) {
-                    modifierNames.set(i, "&f&" + modifierChars.get(i) + modifierNames.get(i));
+                    if (i > 0) {
+                        builder.append("&r&f, ");
+                    }
+
+                    builder.append("&f&").append(modifierChars.get(i)).append(modifierNames.get(i));
                 }
 
-                return GeneralUtils.colourise(String.join("&r&f, ", modifierNames));
+                return GeneralUtils.colourise(builder.toString());
             }
 
             case "group": {
@@ -175,7 +178,7 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
             }
 
             default: {
-                // Check if it is a valid <colour>_available identifier.
+
                 if (identifier.matches("^[0-9abcdef]_available$")) {
                     String codeToCheck = identifier.split("_")[0];
 
@@ -186,7 +189,7 @@ public class PlaceholderAPIHook extends PlaceholderExpansion {
                         return M.GUI_UNAVAILABLE;
                     }
                 }
-                // Check if it is a valid <modifier>_available identifier.
+
                 else if (identifier.matches("^[klmno]_available$")) {
                     String codeToCheck = identifier.split("_")[0];
 

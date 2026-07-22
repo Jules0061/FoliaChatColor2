@@ -20,7 +20,7 @@ import com.sulphate.chatcolor2.utils.Messages;
 
 import java.util.UUID;
 
-public class PlayerJoinListener implements Listener, Reloadable {
+public final class PlayerJoinListener implements Listener, Reloadable {
 
     private final Messages M;
     private final ConfigsManager configsManager;
@@ -52,7 +52,10 @@ public class PlayerJoinListener implements Listener, Reloadable {
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onEvent(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
+        handleJoin(event.getPlayer());
+    }
+
+    public void handleJoin(Player player) {
         UUID uuid = player.getUniqueId();
 
         dataStore.loadPlayerData(uuid, loaded -> {
@@ -63,13 +66,12 @@ public class PlayerJoinListener implements Listener, Reloadable {
 
                 checkCustomColour(uuid);
 
-                // Check their default colour.
                 generalUtils.checkDefault(uuid);
 
                 sendJoinMessage(player);
 
                 if (GeneralUtils.check(player)) {
-                    player.sendMessage(M.PREFIX + M.PLUGIN_NOTIFICATION.replace("[version]", ChatColor.getPlugin().getDescription().getVersion()));
+                    player.sendMessage(M.PREFIX + M.PLUGIN_NOTIFICATION.replace("[version]", ChatColor.getPlugin().getVersionString()));
                 }
             }
         });
@@ -77,12 +79,12 @@ public class PlayerJoinListener implements Listener, Reloadable {
 
     private void sendJoinMessage(Player player) {
         if (mainConfig.getBoolean(Setting.JOIN_MESSAGE.getConfigPath())) {
-            // Check if they have a group colour, and if it should be enforced (copied code from chat listener, may abstract it at some point).
+
             String groupColour = groupColoursManager.getGroupColourForPlayer(player);
             String colour = dataStore.getColour(player.getUniqueId());
 
             if (groupColour != null) {
-                // If it should be forced, set it so.
+
                 if (mainConfig.getBoolean(Setting.FORCE_GROUP_COLORS.getConfigPath())) {
                     colour = groupColour;
                 }

@@ -2,6 +2,7 @@ package com.sulphate.chatcolor2.gui.item;
 
 import com.sulphate.chatcolor2.exception.InvalidItemTemplateException;
 import com.sulphate.chatcolor2.exception.InvalidMaterialException;
+import com.sulphate.chatcolor2.utils.GeneralUtils;
 import com.sulphate.chatcolor2.utils.InventoryUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -12,12 +13,14 @@ import org.bukkit.profile.PlayerProfile;
 import org.bukkit.profile.PlayerTextures;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+@SuppressWarnings("deprecation")
 public class ItemStackTemplate {
 
     private final Material material;
@@ -43,6 +46,7 @@ public class ItemStackTemplate {
 
         if (section.contains("material")) {
             String materialName = section.getString("material");
+            assert materialName != null;
             material = Material.getMaterial(materialName);
 
             if (material == null) {
@@ -94,8 +98,14 @@ public class ItemStackTemplate {
         try {
             SkullMeta meta = (SkullMeta) head.getItemMeta();
 
-            PlayerProfile pProfile = Bukkit.createPlayerProfile(UUID.randomUUID());
             URL textureUrl = getUrlFromHeadData();
+
+            if (textureUrl == null) {
+                failedToApplyHeadData = true;
+                return;
+            }
+
+            PlayerProfile pProfile = Bukkit.createPlayerProfile(UUID.randomUUID());
             PlayerTextures textures = pProfile.getTextures();
 
             textures.setSkin(textureUrl);
@@ -118,10 +128,10 @@ public class ItemStackTemplate {
         String urlPart = decoded.substring(decoded.indexOf("url") + 6, decoded.indexOf("}") - 1);
 
         try {
-            return new URL(urlPart);
+            return URI.create(urlPart).toURL();
         }
-        catch (MalformedURLException ex) {
-            ex.printStackTrace();
+        catch (IllegalArgumentException | MalformedURLException ex) {
+            GeneralUtils.sendConsoleMessage("&6[ChatColor] &cError: Invalid head texture URL: " + urlPart);
             return null;
         }
     }

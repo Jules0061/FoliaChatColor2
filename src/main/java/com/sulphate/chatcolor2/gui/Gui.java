@@ -19,6 +19,7 @@ import org.bukkit.inventory.Inventory;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("deprecation")
 public class Gui {
 
     private static final List<String> REQUIRED_GUI_KEYS = Arrays.asList(
@@ -88,26 +89,14 @@ public class Gui {
 
         this.inventoryType = inventoryType;
 
-        title = GeneralUtils.colourise(parsePrefixedColouredString(section.getString("title")));
+        title = GeneralUtils.colourise(parsePrefixedColouredString(section.getString("title", "")));
         size = section.getInt("size");
-        items = parseItems(section.getConfigurationSection("items"), owner, playerData);
+        items = parseItems(section.getConfigurationSection("items"), owner);
     }
 
-    private static class ParseResult {
+    private record ParseResult(GuiItem item, int slot, boolean shouldPrintHexWarning) { }
 
-        final GuiItem item;
-        final int slot;
-        final boolean shouldPrintHexWarning;
-
-        ParseResult(GuiItem item, int slot, boolean shouldPrintHexWarning) {
-            this.item = item;
-            this.slot = slot;
-            this.shouldPrintHexWarning = shouldPrintHexWarning;
-        }
-
-    }
-
-    private Map<Integer, GuiItem> parseItems(ConfigurationSection section, Player player, PlayerData playerData) {
+    private Map<Integer, GuiItem> parseItems(ConfigurationSection section, Player player) {
         if (section == null) {
             return new HashMap<>();
         }
@@ -128,19 +117,16 @@ public class Gui {
                 continue;
             }
 
-            sendLegacyHexWarning = result.shouldPrintHexWarning;
-            GuiItem item = result.item;
+            sendLegacyHexWarning = result.shouldPrintHexWarning();
+            GuiItem item = result.item();
 
             if (item == null) {
                 continue;
             }
 
-            if (item instanceof PermissibleItem) {
-                PermissibleItem permissible = (PermissibleItem) item;
+            if (item instanceof PermissibleItem permissible) {
                 permissible.checkPermission(player);
 
-                // If permissible, the no-permissions template is null, and the player has no permission, skip the item.
-                // Or, if it's a dynamic inventory and no permission, skip it as well.
                 if ((noPermissionItemTemplate == null || inventoryType.equals(InventoryType.DYNAMIC))  && !permissible.hasPermission()) {
                     continue;
                 }
@@ -150,7 +136,7 @@ public class Gui {
                 dynamicItems.add(item);
             }
             else {
-                items.put(result.slot, item);
+                items.put(result.slot(), item);
             }
         }
 
@@ -207,7 +193,7 @@ public class Gui {
             throw new InvalidGuiException(String.format(Messages.INVALID_ITEM, itemKey, name, "missing 'type' config value"));
         }
 
-        String typeString = itemSection.getString("type");
+        String typeString = itemSection.getString("type", "");
         ItemType type;
 
         try {
@@ -227,7 +213,7 @@ public class Gui {
                 throw new InvalidGuiException(String.format(Messages.INVALID_ITEM, itemKey, name, "missing 'data' config value"));
             }
 
-            String data = itemSection.getString("data");
+            String data = itemSection.getString("data", "");
             List<String> noPermissionLore = itemSection.getStringList("no-permission-lore");
 
             if (type.equals(ItemType.INVENTORY)) {
@@ -271,7 +257,6 @@ public class Gui {
 
                 ItemStackTemplate itemTemplate = ItemStackTemplate.fromConfigSection(itemSection);
 
-                // Default display name is auto-generated, but allow them to override it if they want.
                 if (itemTemplate.getDisplayName() == null) {
                     itemTemplate.setDisplayName(getColourName(data));
                 }
@@ -306,7 +291,6 @@ public class Gui {
         return new ParseResult(item, slot, false);
     }
 
-    // This checks for custom colours at the start of a string
     private String parsePrefixedColouredString(String prefixedString) {
         if (!prefixedString.startsWith("%")) {
             return prefixedString;
@@ -344,8 +328,6 @@ public class Gui {
             colourName = String.format("%s%s", colour, generalUtils.getColorName(colour, true));
         }
 
-        // White colours get replaced by nothing by Minecraft in item names (default colour)!
-        // Prefacing it with another colour fixes this problem.
         if (colourName.startsWith("&f")) {
             colourName = "&a" + colourName;
         }
@@ -363,18 +345,15 @@ public class Gui {
         owner.openInventory(inventory);
     }
 
-    // Performs an interaction within the GUI, updating the passed inventory with any effects of the interaction.
     public void onInteract(int slot, Inventory inventory) {
-        // This means they clicked outside of the actual GUI.
+
         if (slot >= size) {
             return;
         }
 
         GuiItem clicked = items.get(slot);
 
-        if (clicked instanceof SelectableItem) {
-            SelectableItem selectable = (SelectableItem) clicked;
-
+        if (clicked instanceof SelectableItem selectable) {
             if (doPreSelectChecks(selectable, slot, inventory)) {
                 if (selectable.select()) {
                     String colour = playerData.getColour();
@@ -399,7 +378,6 @@ public class Gui {
         inventory.setItem(slot, clicked.buildItem());
     }
 
-    // Returns true if it should select, false if not.
     private boolean doPreSelectChecks(SelectableItem item, int slot, Inventory inventory) {
         String displayName = ((GuiItem) item).buildItem().getItemMeta().getDisplayName();
 
@@ -445,9 +423,8 @@ public class Gui {
     private void unselectCurrentColour(int interactedSlot, Inventory inventory) {
         Optional<Map.Entry<Integer, GuiItem>> selectedOptional = getSelectedColourItemEntry();
 
-        // Deselect any currently selected colour item.
         selectedOptional.ifPresent(selectedEntry -> {
-            // Only if it's not the current selection.
+
             if (selectedEntry.getKey() != interactedSlot) {
                 ((SelectableItem) selectedEntry.getValue()).unselect();
                 inventory.setItem(selectedEntry.getKey(), selectedEntry.getValue().buildItem());

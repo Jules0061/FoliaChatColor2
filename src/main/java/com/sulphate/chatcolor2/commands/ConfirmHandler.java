@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 import com.sulphate.chatcolor2.schedulers.ConfirmScheduler;
 import com.sulphate.chatcolor2.utils.Messages;
 
-public class ConfirmHandler extends Handler implements Reloadable {
+public final class ConfirmHandler extends Handler implements Reloadable {
 
     private final Messages M;
     private final ConfirmationsManager confirmationsManager;
@@ -65,7 +65,7 @@ public class ConfirmHandler extends Handler implements Reloadable {
 
         switch(setting.getDataType()) {
             case NONE: {
-                // Overwrite configs with default ones.
+
                 ChatColor.getPlugin().saveResource("config.yml", true);
                 ChatColor.getPlugin().saveResource("messages.yml", true);
                 ChatColor.getPlugin().saveResource("groups.yml", true);
@@ -77,7 +77,6 @@ public class ConfirmHandler extends Handler implements Reloadable {
                 guiManager.reload();
                 customColoursManager.reload();
 
-                // Re-load player configs to avoid plugin inoperation.
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     configsManager.loadPlayerConfig(player.getUniqueId());
                 }
@@ -100,7 +99,6 @@ public class ConfirmHandler extends Handler implements Reloadable {
                 mainConfig.set(setting.getConfigPath(), value);
                 valueString = String.valueOf(value);
 
-                // Update the save scheduler with the new interval. Only applicable to the YAML implementation.
                 if (setting.getName().equals("save-interval") && dataStore instanceof YamlStorageImpl) {
                     ((YamlStorageImpl) dataStore).updateSaveInterval(value);
                 }
@@ -108,7 +106,6 @@ public class ConfirmHandler extends Handler implements Reloadable {
                 break;
             }
 
-            // The actual updating of these types is the same, bar the exception of default-color.
             case COMMAND_NAME:
             case STRING: {
                 String value = (String) scheduler.getValue();
@@ -143,7 +140,7 @@ public class ConfirmHandler extends Handler implements Reloadable {
     }
 
     private void createNewDefaultColour(String colour) {
-        // Current millis time will always be unique.
+
         long code = (System.currentTimeMillis() / 1000);
 
         mainConfig.set("default.code", code);

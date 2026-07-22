@@ -1,8 +1,9 @@
-name: ChatColor2
+name: FoliaChatColor2
 main: com.sulphate.chatcolor2.main.ChatColor
 version: ${project.version}
-api-version: "1.13"
-author: Sulphate
+api-version: "1.21"
+author: Sulphate & Jules (Forked it)
+folia-supported: true
 
 softdepend: [ PlaceholderAPI ]
 

@@ -122,8 +122,6 @@ public class ColourItem extends ComplexGuiItem implements PermissibleItem, Selec
 
             selected = true;
 
-            // Unless it's a custom colour or the default, just set the name.
-            // e.g., a, b, c, #123456
             if (data.startsWith("%")) {
                 playerData.setColour(data);
             }

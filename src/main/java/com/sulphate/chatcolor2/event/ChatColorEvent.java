@@ -7,6 +7,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.jetbrains.annotations.NotNull;
 
+@SuppressWarnings({ "deprecation", "unused" })
 public class ChatColorEvent extends Event implements Cancellable {
 
     private final HandlerList handlerList;

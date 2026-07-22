@@ -1,9 +1,9 @@
 package com.sulphate.chatcolor2.data;
 
 import com.sulphate.chatcolor2.main.ChatColor;
+import com.sulphate.chatcolor2.schedulers.Schedulers;
 import com.sulphate.chatcolor2.utils.GeneralUtils;
 import com.sulphate.chatcolor2.utils.Messages;
-import org.bukkit.Bukkit;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -11,7 +11,12 @@ import java.util.UUID;
 
 import static com.sulphate.chatcolor2.data.DatabaseConnectionSettings.TABLE_NAME;
 
+@SuppressWarnings({ "SqlNoDataSourceInspection", "SqlDialectInspection" })
 public class SqlStorageImpl extends PlayerDataStore {
+
+    private static final String SELECT_QUERY = "SELECT Colour, DefaultCode FROM " + TABLE_NAME + " WHERE UUID=?;";
+    private static final String INSERT_QUERY = "INSERT INTO " + TABLE_NAME + " VALUES(?, '', -1);";
+    private static final String UPDATE_QUERY = "UPDATE " + TABLE_NAME + " SET Colour=?, DefaultCode=? WHERE UUID=?;";
 
     private final DatabaseConnectionSettings settings;
     private final Messages M;
@@ -31,7 +36,7 @@ public class SqlStorageImpl extends PlayerDataStore {
     }
 
     private void runAsync(Runnable runnable) {
-        Bukkit.getScheduler().runTaskAsynchronously(ChatColor.getPlugin(), runnable);
+        Schedulers.async(ChatColor.getPlugin(), runnable);
     }
 
     private boolean initialiseDatabase() {
@@ -102,18 +107,14 @@ public class SqlStorageImpl extends PlayerDataStore {
         return false;
     }
 
-    // The return value passed to the callback is not whether the fetch was successful, but if there is *some* data
-    // that can now be used for the player, including temporary data. It only returns false if the database has not
-    // been initialised.
     @Override
     public void loadPlayerData(UUID uuid, Callback<Boolean> callback) {
         runAsync(() -> {
             try (
                     Connection con = dataSource.getConnection();
-                    PreparedStatement statement = con.prepareStatement(
-                        String.format("SELECT * FROM %s WHERE UUID='%s';", TABLE_NAME, uuid)
-                    )
+                    PreparedStatement statement = con.prepareStatement(SELECT_QUERY)
             ) {
+                statement.setString(1, uuid.toString());
                 ResultSet results = statement.executeQuery();
 
                 if (results == null || !results.next()) {
@@ -121,8 +122,7 @@ public class SqlStorageImpl extends PlayerDataStore {
                     insertNewPlayer(uuid, con);
                 }
                 else {
-                    // Note that we don't call results.next() here as we expect one result, and we already called
-                    // it to check that there is a result^^.
+
                     String colour = results.getString("Colour");
                     long defaultCode = results.getLong("DefaultCode");
 
@@ -141,15 +141,14 @@ public class SqlStorageImpl extends PlayerDataStore {
     }
 
     private void insertNewPlayer(UUID uuid, Connection con) throws SQLException {
-            try (PreparedStatement statement = con.prepareStatement(
-                    String.format("INSERT INTO %s VALUES('%s', '', -1);", TABLE_NAME, uuid)
-            )) {
-                int rows = statement.executeUpdate();
+        try (PreparedStatement statement = con.prepareStatement(INSERT_QUERY)) {
+            statement.setString(1, uuid.toString());
+            int rows = statement.executeUpdate();
 
-                if (rows == 0) {
-                    GeneralUtils.sendConsoleMessage(M.PREFIX + M.FAILED_TO_CREATE_NEW_PLAYER.replace("[player]", uuid.toString()));
-                }
+            if (rows == 0) {
+                GeneralUtils.sendConsoleMessage(M.PREFIX + M.FAILED_TO_CREATE_NEW_PLAYER.replace("[player]", uuid.toString()));
             }
+        }
     }
 
     @Override
@@ -163,10 +162,12 @@ public class SqlStorageImpl extends PlayerDataStore {
         runAsync(() -> {
             try (
                     Connection con = dataSource.getConnection();
-                    PreparedStatement statement = con.prepareStatement(
-                            String.format("UPDATE %s SET UUID='%s', Colour='%s', DefaultCode=%d WHERE UUID='%s';", TABLE_NAME, uuid, data.getColour(), data.getDefaultCode(), uuid)
-                    )
+                    PreparedStatement statement = con.prepareStatement(UPDATE_QUERY)
             ) {
+                statement.setString(1, data.getColour());
+                statement.setLong(2, data.getDefaultCode());
+                statement.setString(3, uuid.toString());
+
                 int count = statement.executeUpdate();
 
                 if (count == 0) {
@@ -182,10 +183,18 @@ public class SqlStorageImpl extends PlayerDataStore {
         });
     }
 
-    // Safety check to ensure all player data has been saved.
     @Override
     public void shutdown() {
         dataMap.values().stream().filter(PlayerData::isDirty).forEach(it -> savePlayerData(it.getUuid()));
+
+        if (dataSource instanceof AutoCloseable) {
+            try {
+                ((AutoCloseable) dataSource).close();
+            }
+            catch (Exception ex) {
+                GeneralUtils.sendConsoleMessage(M.PREFIX + "&cError: Failed to close the database connection pool: " + ex.getMessage());
+            }
+        }
     }
 
 }

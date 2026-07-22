@@ -9,8 +9,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.permissions.Permission;
-import org.bukkit.permissions.PermissionDefault;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -18,7 +16,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-public class GeneralUtils implements Reloadable {
+@SuppressWarnings("deprecation")
+public final class GeneralUtils implements Reloadable {
 
     private static final String COLOUR_PLACEHOLDER = "[color]";
     private static final String BASE_COLOUR_PATTERN = "&([a-f0-9]|#[0-9A-Fa-f]{6}|[ug]\\[(#[0-9A-Fa-f]{6}|[0-9A-Fa-f])(,(#[0-9A-Fa-f]{6}|[0-9A-Fa-f]))*])(&[k-o])*";
@@ -40,7 +39,6 @@ public class GeneralUtils implements Reloadable {
     private final Map<String, String> modifierCodeToNameMap;
 
     private YamlConfiguration mainConfig;
-    private YamlConfiguration groupsConfig;
 
     public GeneralUtils(
             ConfigsManager configsManager, CustomColoursManager customColoursManager, PlayerDataStore dataStore,
@@ -60,7 +58,6 @@ public class GeneralUtils implements Reloadable {
 
     public void reload() {
         mainConfig = configsManager.getConfig(Config.MAIN_CONFIG);
-        groupsConfig = configsManager.getConfig(Config.GROUPS);
 
         colourCodeToNameMap.clear();
         modifierCodeToNameMap.clear();
@@ -89,7 +86,6 @@ public class GeneralUtils implements Reloadable {
         modifierCodeToNameMap.put("o", M.ITALIC);
     }
 
-    // Small utility method to colourise messages.
     public static String colourise(String message) {
         Matcher matcher = COLOUR_IN_MESSAGE_PATTERN.matcher(message);
         StringBuilder result = new StringBuilder();
@@ -127,7 +123,6 @@ public class GeneralUtils implements Reloadable {
     private static String colourPartial(String colour, String text) {
         String partial = colour + text;
 
-        // Attempt to colourise any rainbow text.
         if (partial.contains("&u")) {
             partial = colouriseSpecial(partial, SpecialColorType.RAINBOW);
         }
@@ -135,18 +130,17 @@ public class GeneralUtils implements Reloadable {
             partial = colouriseSpecial(partial, SpecialColorType.GRADIENT);
         }
 
-        // Replace hex colour codes with the correct hex colour(s).
         Pattern hexPattern = Pattern.compile("&#[A-Fa-f0-9]{6}");
         Matcher matcher = hexPattern.matcher(partial);
 
-        StringBuffer result = new StringBuffer();
+        StringBuilder result = new StringBuilder();
 
         while (matcher.find()) {
             matcher.appendReplacement(result, createHexColour(matcher.group()));
             matcher.appendTail(result);
         }
 
-        if (result.length() > 0) {
+        if (!result.isEmpty()) {
             partial = result.toString();
         }
 
@@ -172,12 +166,11 @@ public class GeneralUtils implements Reloadable {
 
             List<String> parsedSpecial = parseSpecialColour(unparsedSpecial);
 
-            // Replace with the actual message content.
             message = message.substring(matcher.end());
 
             if (type.equals(SpecialColorType.GRADIENT)) {
-                // Further parse the gradient colours to create the full set.
-                parsedSpecial = createGradientColour(parsedSpecial, message.replaceAll(" ", "").length());
+
+                parsedSpecial = createGradientColour(parsedSpecial, message.replace(" ", "").length());
             }
 
             if (message.isEmpty()) {
@@ -233,9 +226,8 @@ public class GeneralUtils implements Reloadable {
         return colour.startsWith("%");
     }
 
-    // Validates if a string is a valid hex colour.
     public static boolean isValidHexColour(String toValidate) {
-        // Allows this to be used with legacy colour functionality.
+
         if (toValidate.startsWith("&")) {
             toValidate = toValidate.substring(1);
         }
@@ -244,7 +236,7 @@ public class GeneralUtils implements Reloadable {
     }
 
     private static String createHexColour(String hexString) {
-        // Safe fallback to white colour if hex is not supported.
+
         if (CompatabilityUtils.isHexLegacy()) {
             return colourise("&f");
         }
@@ -274,9 +266,7 @@ public class GeneralUtils implements Reloadable {
         int totalColours = coloursBetween * colours.size() + (colours.size() + 2);
 
         if (totalColours < gradientLength) {
-            // Generate twice the minimum to give a decent representation.
-            // Minimum = gradient length / number of sections between.
-            // This is likely to happen for gradients whose start and end points are close, e.g. grey -> dark grey.
+
             coloursBetween = (int) Math.ceil(gradientLength / (double) (colours.size() - 1)) * 3;
         }
 
@@ -285,18 +275,18 @@ public class GeneralUtils implements Reloadable {
             fullList.addAll(createColoursBetween(colours.get(i), colours.get(i + 1), coloursBetween));
         }
 
-        fullList.add(colours.get(colours.size() - 1));
+        fullList.add(colours.getLast());
 
         List<String> gradientColours = new ArrayList<>();
 
-        gradientColours.add(colours.get(0));
+        gradientColours.add(colours.getFirst());
         for (int i = 1; i < gradientLength - 1; i++) {
             double relativePosition = i / (double) (gradientLength - 1);
             int index = (int) Math.floor(relativePosition * fullList.size());
 
             gradientColours.add(fullList.get(index));
         }
-        gradientColours.add(colours.get(colours.size() - 1));
+        gradientColours.add(colours.getLast());
 
         return gradientColours;
     }
@@ -322,7 +312,7 @@ public class GeneralUtils implements Reloadable {
         final int b;
 
         HexColour(String textFormat) {
-            // If it's a character, then it's a legacy colour code. Convert it.
+
             if (textFormat.length() == 1) {
                 textFormat = LegacyHexMap.getHexForLegacyColour(textFormat.charAt(0));
             }
@@ -345,11 +335,7 @@ public class GeneralUtils implements Reloadable {
         }
 
         private String padHex(String hex) {
-            while (hex.length() < 2) {
-                hex = "0" + hex;
-            }
-
-            return hex;
+            return hex.length() >= 2 ? hex : "0".repeat(2 - hex.length()) + hex;
         }
 
         String toTextFormat() {
@@ -363,7 +349,6 @@ public class GeneralUtils implements Reloadable {
         HexColour start = new HexColour(startColour);
         HexColour end = new HexColour(endColour);
 
-        // Add a step, as otherwise the last step will be equal to the end colour.
         double rStepAmount = (end.r - start.r) / (double) (steps + 1);
         double gStepAmount = (end.g - start.g) / (double) (steps + 1);
         double bStepAmount = (end.b - start.b) / (double) (steps + 1);
@@ -381,7 +366,6 @@ public class GeneralUtils implements Reloadable {
         return result;
     }
 
-    // Returns whether a String is different when colourised.
     public static boolean isDifferentWhenColourised(String toColourise) {
         if (toColourise.contains("§")) {
             return true;
@@ -391,8 +375,6 @@ public class GeneralUtils implements Reloadable {
         return !toColourise.equals(colourised);
     }
 
-    // Applies a color string (like the one the dataStore.getColor(uuid) method returns) to a message,
-    // optionally taking into account the color override setting.
     public String colouriseMessage(String colour, String message, boolean checkOverride) {
         String colourisedMessage = message;
 
@@ -400,19 +382,18 @@ public class GeneralUtils implements Reloadable {
             colour = customColoursManager.getCustomColour(colour);
         }
 
-        // Check the override if the coloured message is different.
         if (checkOverride && isDifferentWhenColourised(message)) {
             boolean override = mainConfig.getBoolean(Setting.COLOR_OVERRIDE.getConfigPath());
             String colourised = colourise(message);
 
             if (override) {
                 while (isDifferentWhenColourised(message)) {
-                    // Remove the colour (override it).
+
                     colourisedMessage = ChatColor.stripColor(colourised);
                 }
             }
             else {
-                // If not overriding, return the colourised message.
+
                 return colourised;
             }
         }
@@ -430,7 +411,6 @@ public class GeneralUtils implements Reloadable {
                 int index = placeholderEntry.getKey();
                 String placeholder = placeholderEntry.getValue();
 
-                // If it would overlap with the previous placeholder, skip it.
                 if (!(index + placeholder.length() < lastEndIndex)) {
                     int startIndex = lastEndIndex == -1 ? 0 : lastEndIndex;
                     String part = message.substring(startIndex, index);
@@ -458,7 +438,6 @@ public class GeneralUtils implements Reloadable {
         Map<Integer, String> placeholdersMap = new TreeMap<>();
         String messageToCheck = message;
 
-        // Iterate over the message, removing one character at a time to build a map of all placeholders.
         for (int i = 0; i < message.length(); i++) {
             for (String placeholder : placeholders) {
                 int index = messageToCheck.indexOf(placeholder);
@@ -514,8 +493,6 @@ public class GeneralUtils implements Reloadable {
         return colourSetMessage(originalMessage, colour, false);
     }
 
-    // Replaces a set-colour-message including if rainbow is in the colour.
-    // This is a clever (if I say so myself) workaround for removing M.THIS, to keep the intended behaviour (using substrings).
     public String colourSetMessage(String originalMessage, String colour, boolean isColourName) {
         if (originalMessage.contains("[color-name]")) {
             if (isColourName) {
@@ -526,25 +503,21 @@ public class GeneralUtils implements Reloadable {
             }
         }
 
-        // If there is no colour placeholder present, we don't need to do anything.
         if (!originalMessage.contains(COLOUR_PLACEHOLDER)) {
             return originalMessage;
         }
 
-        // Colourising with rainbow colour is a bit more complicated since I removed M.THIS.
         if (colour.contains("&u") || colour.contains("&g") || colour.contains("%")) {
             String finalString;
 
-            // The message up to the colour placeholder.
             String firstPart = originalMessage.substring(0, originalMessage.indexOf(COLOUR_PLACEHOLDER));
-            // The message past the colour placeholder.
+
             String lastPart = originalMessage.substring(originalMessage.indexOf(COLOUR_PLACEHOLDER) + COLOUR_PLACEHOLDER.length());
 
-            // If there is more colouration after the placeholder, we need to make sure we don't overwrite it, or add unnecessary colours.
             if (lastPart.contains(ChatColor.COLOR_CHAR + "")) {
-                // The part of the message past the placeholder that is not colour-changed.
+
                 String toColour = lastPart.substring(0, lastPart.indexOf(ChatColor.COLOR_CHAR + ""));
-                // The part of the message past the placeholder that *is* colour-changed, if any.
+
                 String toAdd = lastPart.substring(lastPart.indexOf(ChatColor.COLOR_CHAR + ""));
 
                 finalString = firstPart + colouriseMessage(colour, toColour, false) + toAdd;
@@ -578,7 +551,6 @@ public class GeneralUtils implements Reloadable {
             return colour.substring(1);
         }
 
-        // Remove any modifiers (start index = second & symbol).
         int modifiersStartIndex = (colour.substring(1).indexOf("&"));
 
         if (modifiersStartIndex != -1) {
@@ -597,7 +569,7 @@ public class GeneralUtils implements Reloadable {
             return Stream.empty();
         }
         else {
-            String modifierChars = colour.substring(modifiersStartIndex + 1).replaceAll("&", "");
+            String modifierChars = colour.substring(modifiersStartIndex + 1).replace("&", "");
             return fullNames ? Arrays.stream(modifierChars.split("")).map(modifierCodeToNameMap::get) : Stream.of(modifierChars.split(""));
         }
     }
@@ -606,7 +578,6 @@ public class GeneralUtils implements Reloadable {
         return modifierCodeToNameMap.get(modifier);
     }
 
-    // Gets the default color for a player, taking into account group color (if they are online).
     public String getDefaultColourForPlayer(UUID uuid) {
         Player target = Bukkit.getPlayer(uuid);
 
@@ -634,7 +605,6 @@ public class GeneralUtils implements Reloadable {
         }
     }
 
-    // Attempts to get a player's UUID from their name, from the playerlist.
     public UUID getUUIDFromName(String name) {
         Player player = Bukkit.getPlayer(name);
 
