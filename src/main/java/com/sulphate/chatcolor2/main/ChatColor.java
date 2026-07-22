@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 
 import com.sulphate.chatcolor2.commands.ChatColorCommand;
+import com.sulphate.chatcolor2.commands.ChatColorTabCompleter;
 import com.sulphate.chatcolor2.commands.Setting;
 import com.sulphate.chatcolor2.data.DatabaseConnectionSettings;
 import com.sulphate.chatcolor2.data.PlayerDataStore;
@@ -234,6 +235,7 @@ public class ChatColor extends JavaPlugin {
         }
 
         chatColorCommand.setExecutor(command);
+        chatColorCommand.setTabCompleter(new ChatColorTabCompleter(customColoursManager, groupColoursManager));
         reloadables.add(command);
         reloadables.add(confirmHandler);
         handlersManager.registerHandler(ConfirmHandler.class, confirmHandler);

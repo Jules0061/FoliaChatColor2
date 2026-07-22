@@ -72,6 +72,10 @@ public final class ChatColorCommand implements CommandExecutor, Reloadable {
         mainConfig = configsManager.getConfig(Config.MAIN_CONFIG);
     }
 
+    static List<String> getSettingNames() {
+        return SETTING_NAMES;
+    }
+
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command cmd, @NotNull String label, @NotNull String @NonNull [] args) {
         boolean notifyOthers = mainConfig.getBoolean(Setting.NOTIFY_OTHERS.getConfigPath());
         boolean forceGroupColours = mainConfig.getBoolean(Setting.FORCE_GROUP_COLORS.getConfigPath());
